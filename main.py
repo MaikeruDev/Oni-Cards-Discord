@@ -24,36 +24,17 @@ import string
 from discord_slash.utils import manage_components
 from discord_slash.model import ButtonStyle
 import emoji
-from threading import Lock
+import textwrap
+import json
 
-def get_custom_image(card_unique_id):
-    def center_text_top(img, font, text, height, color=(0, 0, 0), ):
-        draw = ImageDraw.Draw(img)
-        text_width, text_height = draw.textsize(text, font)
-        position = ((strip_width-text_width)/2, height)
-        draw.text(position, text, color, font=font)
-        return img
 
-    def center_text_bot(img, font, text, height, color=(0, 0, 0)):
-        draw = ImageDraw.Draw(img)
-        text_width, text_height = draw.textsize(text, font)
-        position = ((strip_width-text_width)/2,height)
-        draw.text(position, text, color, font=font)
-        return img
-
+def get_custom_image(cid):
     def text_code(img, font, text, color=(0, 0, 0)):
         draw = ImageDraw.Draw(img)
         text_width, text_height = draw.textsize(text, font)
         position = ((strip_width-text_width-200)/2,9)
         draw.text(position, text, color, font=font)
         return img
-
-    """ def text_print(img, font, text, color=(0, 0, 0)):
-        draw = ImageDraw.Draw(img)
-        text_width, text_height = draw.textsize(text, font)
-        position = ((strip_width+245)/2,765)
-        draw.text(position, text, color, font=font, direction='rtl')
-        return img """
 
     def text_edition(img, font, text, color=(0, 0, 0)):
         draw = ImageDraw.Draw(img)
@@ -62,8 +43,10 @@ def get_custom_image(card_unique_id):
         draw.text(position, text, color, font=font)
         return img
 
-    mycursor.execute("SELECT * FROM unique_card JOIN card_info ON unique_card.card_id = card_info.card_id WHERE unique_card.card_unique_id = '" + str(card_unique_id) + "'")
+    mycursor.execute("SELECT * FROM unique_card JOIN card_info ON unique_card.card_id = card_info.card_id WHERE unique_card.card_unique_id = '" + cid + "'")
     res = mycursor.fetchone()   
+
+    strip_width, strip_height = 500, 810
 
     file_like= BytesIO(res["card_img"])
     background = PIL.Image.open(file_like)
@@ -82,36 +65,17 @@ def get_custom_image(card_unique_id):
         foreground = PIL.Image.open("./borders/level1.png")
         background.paste(foreground, (0, 0), foreground)
 
-
-    strip_width, strip_height = 500, 810
-
-    name_font = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 48)
-    name_font2 = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 39)
-    name_font3 = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 32)
-    anime_font = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 51)
-    anime_font2 = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 38)
-    anime_font3 = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 32)
+    #image_width
+    font = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 40)
     small_font = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 28)
-    if len(res["char_name"]) <= 20:
-        background = center_text_top(background, name_font, res["char_name"], 65)
-    elif len(res["char_name"]) > 20 and len(res["char_name"]) <= 30:
-        strip_width += 20
-        background = center_text_top(background, name_font2, res["char_name"], 75)
-    elif len(res["char_name"]) > 30:
-        background = center_text_top(background, name_font3, res["char_name"], 75)
-    strip_width = 500
-    if len(res["anime_origin"]) <= 20:
-        background = center_text_bot(background, anime_font, res["anime_origin"],675)
-    elif len(res["anime_origin"]) > 17 and len(res["anime_origin"]) <= 25:
-        strip_width += 20
-        background = center_text_bot(background, anime_font2, res["anime_origin"],685)
-    elif len(res["anime_origin"]) > 25:
-        background = center_text_bot(background, anime_font3, res["anime_origin"],685)
-    strip_width = 500
-    background = text_edition(background, small_font, str(res["card_edition"]) + " · " + str(res["card_print"]))
-    #background = text_print(background, small_font, str(res["card_print"]))
-    background = text_code(background, small_font, str(res["card_unique_id"]))
 
+    text_start_height = 75
+    draw_multiple_line_text(background, res["char_name"], font, "#000", text_start_height)
+    draw_multiple_line_text(background, res["anime_origin"], font, "#000", 685)
+
+    background = text_edition(background, small_font, str(res["card_edition"]) + " · " + str(res["card_print"])) 
+    background = text_code(background, small_font, str(res["card_unique_id"]))
+    
     buffer = BytesIO()     
     background.save(buffer, 'jpeg')
     buffer.seek(0)        
@@ -120,20 +84,6 @@ def get_custom_image(card_unique_id):
     return bg_image
 
 def get_custom_image_drop(card_id):
-    def center_text_top(img, font, text, height, color=(0, 0, 0), ):
-        draw = ImageDraw.Draw(img)
-        text_width, text_height = draw.textsize(text, font)
-        position = ((strip_width-text_width)/2, height)
-        draw.text(position, text, color, font=font)
-        return img
-
-    def center_text_bot(img, font, text, height, color=(0, 0, 0)):
-        draw = ImageDraw.Draw(img)
-        text_width, text_height = draw.textsize(text, font)
-        position = ((strip_width-text_width)/2,height)
-        draw.text(position, text, color, font=font)
-        return img
-
     def text_edition(img, font, text, color=(0, 0, 0)):
         draw = ImageDraw.Draw(img)
         text_width, text_height = draw.textsize(text, font)
@@ -141,62 +91,57 @@ def get_custom_image_drop(card_id):
         draw.text(position, text, color, font=font)
         return img
 
-    """ def text_print(img, font, text, color=(0, 0, 0)):
-        draw = ImageDraw.Draw(img)
-        text_width, text_height = draw.textsize(text, font)
-        position = ((strip_width-245)/2,640)
-        draw.text(position, text, color, font=font)
-        return img """
-
     mycursor.execute("SELECT * FROM card_info WHERE card_id = " + str(card_id))
     res = mycursor.fetchone()   
+
+    strip_width, strip_height = 500, 810
 
     file_like= BytesIO(res["card_img"])
     background = PIL.Image.open(file_like)
     background = background.resize((500, 810))
+    foreground = ""
     if res["card_edition"] == 1:
         foreground = PIL.Image.open("./borders/level1.png")
+        background.paste(foreground, (0, 0), foreground)
     elif res["card_edition"] == 2:
         foreground = PIL.Image.open("./borders/level2.png")
+        background.paste(foreground, (0, 0), foreground)
     elif res["card_edition"] == 3:
         foreground = PIL.Image.open("./borders/level3.png")
+        background.paste(foreground, (0, 0), foreground)
+    else:
+        foreground = PIL.Image.open("./borders/level1.png")
+        background.paste(foreground, (0, 0), foreground)
 
-    background.paste(foreground, (0, 0), foreground)
-
-    strip_width, strip_height = 500, 810
-
-    name_font = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 48)
-    name_font2 = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 39)
-    name_font3 = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 32)
-    anime_font = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 51)
-    anime_font2 = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 38)
-    anime_font3 = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 32)
+    #image_width
+    font = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 40)
     small_font = ImageFont.truetype("./fonts/liga_sans_heavy.ttf", 28)
-    if len(res["char_name"]) <= 20:
-        background = center_text_top(background, name_font, res["char_name"], 65)
-    elif len(res["char_name"]) > 20 and len(res["char_name"]) <= 30:
-        strip_width += 20
-        background = center_text_top(background, name_font2, res["char_name"], 75)
-    elif len(res["char_name"]) > 30:
-        background = center_text_top(background, name_font3, res["char_name"], 75)
-    strip_width = 500
-    if len(res["anime_origin"]) <= 20:
-        background = center_text_bot(background, anime_font, res["anime_origin"],675)
-    elif len(res["anime_origin"]) > 20 and len(res["anime_origin"]) <= 30:
-        strip_width += 20
-        background = center_text_bot(background, anime_font2, res["anime_origin"],685)
-    elif len(res["anime_origin"]) > 30:
-        background = center_text_bot(background, anime_font3, res["anime_origin"],685)
-    strip_width = 500
-    background = text_edition(background, small_font, str(res["card_edition"]) + " · #" + str(res["card_total_count"] + 1))
-    #background = text_print(background, small_font, str(res["card_total_count"] + 1))
 
+    text_start_height = 75
+    draw_multiple_line_text(background, res["char_name"], font, "#000", text_start_height)
+    draw_multiple_line_text(background, res["anime_origin"], font, "#000", 685)
+
+    background = text_edition(background, small_font, str(res["card_edition"]) + " · #" + str(res["card_total_count"] + 1))
+    
     buffer = BytesIO()     
     background.save(buffer, 'jpeg')
     buffer.seek(0)        
     bg_image = buffer         
 
     return bg_image
+
+def draw_multiple_line_text(image, text, font, text_color, text_start_height):
+    draw = ImageDraw.Draw(image)
+    image_width, image_height = image.size
+    y_text = text_start_height
+    lines = textwrap.wrap(text, width=25)
+    if len(lines) > 1:
+        y_text -= 20
+    for line in lines:
+        line_width, line_height = font.getsize(line)
+        draw.text(((image_width - line_width) / 2, y_text), 
+                  line, font=font, fill=text_color)
+        y_text += line_height
 
 def get_args(message):
         return message.split()
@@ -213,13 +158,18 @@ mydb = mysql.connector.connect(
 mydb.set_charset_collation('utf8mb4', 'utf8mb4_general_ci')
 
 mycursor = mydb.cursor(dictionary=True, buffered=True)
+
 print('We have logged into MySQL')
 
+f = open("./config.json")
+token = json.load(f)["token"]
+
 client = discord.Client()
-my_secret = "MTAwMTU1MjYyMjgyNzg2NDEwNA.G_52Aq.TF14t_PIGFJQ70GNd4ShQxNsPJTmPQm3WDKf-U"
+my_secret = token 
 
 @client.event
 async def on_ready():
+    await client.change_presence(activity=discord.Game(name="ohelp"))
     print('We have logged into Discord as {0.user}'.format(client))
 
 @client.event
@@ -258,11 +208,14 @@ async def on_message(message):
     """ Oni.Verify Check """
 
     if message.content.startswith('o'):
-        mycursor.execute("SELECT COUNT(user.user_uid) as count FROM user WHERE user.user_uid = '" + str(message.author.id) + "'")
-        userCheck = mycursor.fetchone()
-        if userCheck["count"] != 1:
-            userExists = False
-            await message.channel.send("Please use **overify** before accessing this bot.")
+        try:
+            mycursor.execute("SELECT COUNT(user.user_uid) as count FROM user WHERE user.user_uid = '" + str(message.author.id) + "'")
+            userCheck = mycursor.fetchone()
+            if userCheck["count"] != 1:
+                userExists = False
+                await message.channel.send("Please use **overify** before accessing this bot.")
+                return
+        except:
             return
 
     """ Oni.Collection """
@@ -546,7 +499,7 @@ async def on_message(message):
                 else:
                     lookupterm = a["char_name"]
         #V1 Searching mycursor.execute("select * from card_info where char_name like '%" + lookupterm + "%' order by locate('" + lookupterm + "', char_name) asc, char_name asc LIMIT 10 OFFSET 0;")
-        mycursor.execute("select * from card_info where char_name like '%" + lookupterm + "%' or anime_origin like '%" + lookupterm + "%' order by card_wishlist desc, locate('" + lookupterm + "', anime_origin) asc, locate('" + lookupterm + "', char_name) desc, char_name asc LIMIT 10 OFFSET 0;")
+        mycursor.execute("select distinct char_name, anime_origin, card_wishlist from card_info where char_name like '%" + lookupterm + "%' or anime_origin like '%" + lookupterm + "%' order by card_wishlist desc, locate('" + lookupterm + "', anime_origin) asc, locate('" + lookupterm + "', char_name) desc, char_name asc LIMIT 10 OFFSET 0;")
         myresult = mycursor.fetchall()
         if len(myresult) == 0:
             await message.channel.send('No Characters found by Term: **' + lookupterm + '**')
@@ -557,20 +510,48 @@ async def on_message(message):
         elif len(myresult) == 1:
             #V1 Searching mycursor.execute("select * from card_info where char_name like '%" + lookupterm + "%' order by locate('" + lookupterm + "', char_name) asc, char_name asc;")           
             mycursor.execute("select * from card_info where char_name like '%" + lookupterm + "%' or anime_origin like '%" + lookupterm + "%' order by card_wishlist desc, locate('" + lookupterm + "', anime_origin) asc, locate('" + lookupterm + "', char_name) desc, char_name asc; ")
-            charresult = mycursor.fetchone()
-            _embedVar = discord.Embed(title="Character Lookup", description='\n \n Character · **' + charresult["char_name"] + '**\n Anime · **' + charresult["anime_origin"] + '**\n Wishlisted · **' + str(charresult["card_wishlist"]) + '** \n \n Total Generated · **' + str(charresult["card_generated"]) + '**\n Total claimed · **' + str(charresult["card_total_count"]) + '**\n Total in circulation · **' + str(charresult["card_used"]) + '**', color=0xffffff)            
-            file_like= BytesIO(charresult["card_img"])
-            img = PIL.Image.open(file_like)
+            charresult = mycursor.fetchall()
+            current_edition = 2
+            _embedVar = discord.Embed(title="Character Lookup", description='\n \n Character · **' + charresult[current_edition]["char_name"] + '**\n Anime · **' + charresult[current_edition]["anime_origin"] + '**\n Wishlisted · **' + str(charresult[current_edition]["card_wishlist"]) + '** \n \n Total Generated · **' + str(charresult[current_edition]["card_generated"]) + '**\n Total claimed · **' + str(charresult[current_edition]["card_total_count"]) + '**\n Total in circulation · **' + str(charresult[current_edition]["card_used"]) + '**', color=0xffffff)            
+            
+            imgs = []
+            list_im = []
 
-            buffer = BytesIO(charresult["card_img"])     
-            img.save(buffer, 'jpeg') 
-            buffer.seek(0)        
-            bg_image = buffer         
+            for m in range(3):
+                file_like = BytesIO(charresult[m]["card_img"])
+                img = PIL.Image.open(file_like)
 
-            file = discord.File(bg_image, filename="image.png")
-            _embedVar.set_thumbnail(url="attachment://image.png")
+                buffer = BytesIO(charresult[m]["card_img"])     
+                img.save(buffer, 'jpeg') 
+                buffer.seek(0)        
+                bg_image = buffer
+                imgs.append(bg_image)    
+            
+            images = [PIL.Image.open(x) for x in imgs]
+            widths, heights = zip(*(i.size for i in images))
 
-            await message.channel.send(file=file, embed=_embedVar)
+            total_width = sum(widths)
+            max_height = max(heights)
+
+            new_im = PIL.Image.new('RGBA', (total_width + 100, max_height), (255, 0, 0, 0))
+
+            x_offset = -50
+            l = 0
+            for im in images:
+                x_offset += 50
+                new_im.paste(im, (x_offset,0))
+                x_offset += im.size[0]
+                l += 1
+
+            buf = io.BytesIO()
+            new_im.save(buf, format='PNG')
+            buf.seek(0)    
+            byte_im = buf
+
+            file = discord.File(byte_im, filename="image.png")
+            _embedVar.set_image(url="attachment://image.png")
+
+            msg = await message.channel.send(file=file, embed=_embedVar)
         else:
             embedVar = discord.Embed(title="Character Results", description='<@' + str(message.author.id) + '>, please select a character by typing a number from 1-10.', color=0xffffff)
             completeString = ""
@@ -587,23 +568,49 @@ async def on_message(message):
             msg = await client.wait_for('message', check=check, timeout=None)
             
             if ses in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]:
-                mycursor.execute("select * from card_info where char_name like '%" + lookupterm + "%' order by locate('" + lookupterm + "', char_name) asc, char_name asc LIMIT 1 OFFSET " + str(int(ses) - 1) + ";")
-                charresult = mycursor.fetchone()
-                _embedVar = discord.Embed(title="Character Lookup", description='\n \n Character · **' + charresult["char_name"] + '**\n Anime · **' + charresult["anime_origin"] + '**\n Wishlisted · **' + str(charresult["card_wishlist"]) + '** \n \n Total Generated · **' + str(charresult["card_generated"]) + '**\n Total claimed · **' + str(charresult["card_total_count"]) + '**\n Total in circulation · **' + str(charresult["card_used"]) + '**', color=0xffffff)
-
+                mycursor.execute("select * from card_info where char_name like '%" + lookupterm + "%' or anime_origin like '%" + lookupterm + "%' order by card_wishlist desc, locate('" + lookupterm + "', anime_origin) asc, locate('" + lookupterm + "', char_name) desc, char_name asc LIMIT 3 OFFSET " + str((int(ses) - 1) * 3) + ";")
+                charresult = mycursor.fetchall()
+                current_edition = 2
+                _embedVar = discord.Embed(title="Character Lookup", description='\n \n Character · **' + charresult[current_edition]["char_name"] + '**\n Anime · **' + charresult[current_edition]["anime_origin"] + '**\n Wishlisted · **' + str(charresult[current_edition]["card_wishlist"]) + '** \n \n Total Generated · **' + str(charresult[current_edition]["card_generated"]) + '**\n Total claimed · **' + str(charresult[current_edition]["card_total_count"]) + '**\n Total in circulation · **' + str(charresult[current_edition]["card_used"]) + '**', color=0xffffff)            
                 
-                file_like= BytesIO(charresult["card_img"])
-                img = PIL.Image.open(file_like)
+                imgs = []
+                list_im = []
 
-                buffer = BytesIO(charresult["card_img"])     
-                img.save(buffer, 'jpeg') 
-                buffer.seek(0)        
-                bg_image = buffer         
+                for m in range(3):
+                    file_like = BytesIO(charresult[m]["card_img"])
+                    img = PIL.Image.open(file_like)
 
-                file = discord.File(bg_image, filename="image.png")
-                _embedVar.set_thumbnail(url="attachment://image.png")
+                    buffer = BytesIO(charresult[m]["card_img"])     
+                    img.save(buffer, 'jpeg') 
+                    buffer.seek(0)        
+                    bg_image = buffer
+                    imgs.append(bg_image)    
+                
+                images = [PIL.Image.open(x) for x in imgs]
+                widths, heights = zip(*(i.size for i in images))
 
-                await message.channel.send(file=file, embed=_embedVar)
+                total_width = sum(widths)
+                max_height = max(heights)
+
+                new_im = PIL.Image.new('RGBA', (total_width + 100, max_height), (255, 0, 0, 0))
+
+                x_offset = -50
+                l = 0
+                for im in images:
+                    x_offset += 50
+                    new_im.paste(im, (x_offset,0))
+                    x_offset += im.size[0]
+                    l += 1
+
+                buf = io.BytesIO()
+                new_im.save(buf, format='PNG')
+                buf.seek(0)    
+                byte_im = buf
+
+                file = discord.File(byte_im, filename="image.png")
+                _embedVar.set_image(url="attachment://image.png")
+
+                msg = await message.channel.send(file=file, embed=_embedVar)
 
     """ Oni.Drop """
 
@@ -626,6 +633,8 @@ async def on_message(message):
         if nd >= dt:
             await message.channel.send("<@" + str(message.author.id) + "> you have to wait another " + str(time_interval) + " before dropping cards!")
         else:
+            mycursor.execute("UPDATE user SET last_drop=now() WHERE user_uid = " + str(message.author.id))
+            mydb.commit()
             mycursor.execute("SELECT * FROM card_amount")
             cardamount = mycursor.fetchone()["amount"]
             randomlist = []
@@ -734,8 +743,6 @@ async def on_message(message):
                 sql = """INSERT INTO unique_card (card_unique_id, card_id, card_quality, card_print, card_custom_image, card_owner_id) VALUES ('""" + str(unique_id) + """', """ + str(card["card_id"]) + """, """ + str(card_quality) + """, """ + str(card_print) + """, %s, """ + str(message.author.id) + """)"""
                 mycursor.execute(sql, (imagebytes,))
                 mydb.commit()
-                mycursor.execute("UPDATE user SET last_drop=now() WHERE user_uid = " + str(message.author.id))
-                mydb.commit()
                 mycursor.execute("UPDATE user SET last_card = '" + str(unique_id) + "', last_own_card = '" + str(unique_id) + "' WHERE user_uid = '" + str(message.author.id) + "'")
                 mydb.commit()
                 await message.channel.send('<@' + str(message.author.id) + '> grabbed **' + card["char_name"] + '** `' + str(unique_id) + '` . It\'s quality is ' + str(card_quality) + '/4.')
@@ -776,7 +783,7 @@ async def on_message(message):
         if len(args) > 2:
             if args[1] == "add":
                 search_term = args[2]
-                mycursor.execute("select * from card_info where char_name like '%" + search_term + "%' order by locate('" + search_term + "', char_name) asc, char_name asc LIMIT 10 OFFSET 0;")
+                mycursor.execute("select distinct char_name, anime_origin, card_wishlist from card_info where char_name like '%" + search_term + "%' order by locate('" + search_term + "', char_name) asc, char_name asc LIMIT 10 OFFSET 0;")
                 myresult = mycursor.fetchall()
                 if len(myresult) == 0:
                     await message.channel.send('No Characters found by Term: **' + search_term + '**')
@@ -785,10 +792,10 @@ async def on_message(message):
                     await message.channel.send('Non valid search term!')
                     return
                 elif len(myresult) == 1:
-                    mycursor.execute("select * from card_info where char_name like '%" + search_term + "%' order by locate('" + search_term + "', char_name) asc, char_name asc;")
-                    charresult = mycursor.fetchone()
+                    mycursor.execute("select * from card_info where char_name like '%" + search_term + "%' order by locate('" + search_term + "', char_name) asc, char_name asc LIMIT 3;")
+                    charresult = mycursor.fetchall()
 
-                    mycursor.execute("SELECT COUNT(card_id) as c FROM wishlist WHERE user_uid = '" + str(message.author.id) + "' and card_id = " + str(charresult["card_id"]))
+                    mycursor.execute("SELECT COUNT(card_id) as c FROM wishlist WHERE user_uid = '" + str(message.author.id) + "' and card_id = " + str(charresult[0]["card_id"]))
                     mydouble = mycursor.fetchone()["c"]
                     if mydouble > 0:
                         await message.reply("This character is already on your wishlist!", mention_author=False)
@@ -801,13 +808,17 @@ async def on_message(message):
                         await message.reply("You can not have more than 10 Cards on your wishlist!", mention_author=False)
                         return
 
-                    mycursor.execute("INSERT INTO wishlist (user_uid, card_id) VALUES ('" + str(message.author.id) + "', " + str(charresult["card_id"]) + ")")
+                    mycursor.execute("INSERT INTO wishlist (user_uid, card_id) VALUES ('" + str(message.author.id) + "', " + str(charresult[0]["card_id"]) + ")")
                     mydb.commit()
 
-                    mycursor.execute("UPDATE card_info SET card_wishlist = card_wishlist + 1 WHERE card_id = " + str(charresult["card_id"]))
+                    mycursor.execute("UPDATE card_info SET card_wishlist = card_wishlist + 1 WHERE card_id = " + str(charresult[0]["card_id"]))
+                    mydb.commit()
+                    mycursor.execute("UPDATE card_info SET card_wishlist = card_wishlist + 1 WHERE card_id = " + str(charresult[1]["card_id"]))
+                    mydb.commit()
+                    mycursor.execute("UPDATE card_info SET card_wishlist = card_wishlist + 1 WHERE card_id = " + str(charresult[2]["card_id"]))
                     mydb.commit()
 
-                    await message.reply("`" + charresult["anime_origin"] + " · " + charresult["char_name"] + "` has been was added to your wishlist.", mention_author=False)
+                    await message.reply("`" + charresult[0]["anime_origin"] + " · " + charresult[0]["char_name"] + "` has been was added to your wishlist.", mention_author=False)
                 else:
                     embedVar = discord.Embed(title="Character Results", description='<@' + str(message.author.id) + '>, please select a character by typing a number from 1-10.', color=0xffffff)
                     completeString = ""
@@ -824,10 +835,10 @@ async def on_message(message):
                     msg = await client.wait_for('message', check=check, timeout=None)
                     
                     if ses in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]:
-                        mycursor.execute("select * from card_info where char_name like '%" + search_term + "%' order by locate('" + search_term + "', char_name) asc, char_name asc LIMIT 1 OFFSET " + str(int(ses) - 1) + ";")
-                        charresult = mycursor.fetchone()
+                        mycursor.execute("select * from card_info where char_name like '%" + search_term + "%' order by locate('" + search_term + "', char_name) asc, char_name asc LIMIT 3;")
+                        charresult = mycursor.fetchall()
 
-                        mycursor.execute("SELECT COUNT(card_id) as c FROM wishlist WHERE user_uid = '" + str(message.author.id) + "' and card_id = " + str(charresult["card_id"]))
+                        mycursor.execute("SELECT COUNT(card_id) as c FROM wishlist WHERE user_uid = '" + str(message.author.id) + "' and card_id = " + str(charresult[0]["card_id"]))
                         mydouble = mycursor.fetchone()["c"]
                         if mydouble > 0:
                             await message.reply("This character is already on your wishlist!", mention_author=False)
@@ -840,19 +851,25 @@ async def on_message(message):
                             await message.reply("You can not have more than 10 Cards on your wishlist!", mention_author=False)
                             return
 
-                        mycursor.execute("INSERT INTO wishlist (user_uid, card_id) VALUES ('" + str(message.author.id) + "', " + str(charresult["card_id"]) + ")")
+                        mycursor.execute("INSERT INTO wishlist (user_uid, card_id) VALUES ('" + str(message.author.id) + "', " + str(charresult[0]["card_id"]) + ")")
                         mydb.commit()
 
-                        mycursor.execute("UPDATE card_info SET card_wishlist = card_wishlist + 1 WHERE card_id = " + str(charresult["card_id"]))
+                        mycursor.execute("UPDATE card_info SET card_wishlist = card_wishlist + 1 WHERE card_id = " + str(charresult[0]["card_id"]))
+                        mycursor.execute("UPDATE card_info SET card_wishlist = card_wishlist + 1 WHERE card_id = " + str(charresult[1]["card_id"]))
+                        mycursor.execute("UPDATE card_info SET card_wishlist = card_wishlist + 1 WHERE card_id = " + str(charresult[2]["card_id"]))
                         mydb.commit()
                         
-                        await message.reply("`" + charresult["anime_origin"] + " · " + charresult["char_name"] + "` has been added to your wishlist.", mention_author=False)
+                        await message.reply("`" + charresult[0]["anime_origin"] + " · " + charresult[0]["char_name"] + "` has been added to your wishlist.", mention_author=False)
             elif args[1] == "remove":
                 search_term = args[2]
-                mycursor.execute("SELECT * FROM wishlist JOIN card_info ON wishlist.card_id = card_info.card_id WHERE wishlist.user_uid = '" + str(message.author.id) + "' and card_info.char_name Like '%" + search_term + "%' order by locate('" + search_term + "', card_info.char_name) asc, card_info.char_name asc")
+                mycursor.execute("SELECT * FROM wishlist JOIN card_info ON wishlist.card_id = card_info.card_id WHERE wishlist.user_uid = '" + str(message.author.id) + "' and card_info.char_name Like '%" + search_term + "%' order by locate('" + search_term + "', card_info.char_name) asc, card_info.char_name asc LIMIT 3")
                 res = mycursor.fetchone()
                 if(res):
-                    mycursor.execute("UPDATE card_info SET card_wishlist = card_wishlist - 1 WHERE card_id = " + str(res["card_id"]))
+                    mycursor.execute("select * from card_info where char_name like '%" + res["char_name"] + "%' order by locate('" + res["char_name"] + "', char_name) asc, char_name asc LIMIT 3;")
+                    x = mycursor.fetchall()
+                    mycursor.execute("UPDATE card_info SET card_wishlist = card_wishlist - 1 WHERE card_id = " + str(x[0]["card_id"]))
+                    mycursor.execute("UPDATE card_info SET card_wishlist = card_wishlist - 1 WHERE card_id = " + str(x[1]["card_id"]))
+                    mycursor.execute("UPDATE card_info SET card_wishlist = card_wishlist - 1 WHERE card_id = " + str(x[2]["card_id"]))
                     mydb.commit()
 
                     mycursor.execute("DELETE FROM wishlist WHERE wish_id = " + str(res["wish_id"]))
@@ -1357,6 +1374,8 @@ async def on_message(message):
         else:
             await message.channel.send("You do not own this card: `" + str(args[1]) + "`")
             return
+
+    """ Oni.Help """
 
     if get_args(message.content)[0] == 'ohelp':
         user = await client.fetch_user(message.author.id)
